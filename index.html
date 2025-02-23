@@ -9,7 +9,7 @@
     <script src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
     <style>
-        /* Estilos previos mantenidos */
+        /* Estilos para cabecera fija */
         .sticky-header {
             position: sticky;
             top: 0;
@@ -29,18 +29,7 @@
             z-index: 15;
         }
         
-        /* Estilos para estados de tareas */
-        .status-ongoing {
-            background-color: #FEF3C7;
-            color: #000000;
-        }
-        
-        .status-done {
-            background-color: #D1FAE5;
-            color: #065F46;
-        }
-        
-        /* Estilos modo oscuro actualizados */
+        /* Estilos para modo oscuro */
         .dark-mode {
             color: #e5e7eb;
         }
@@ -49,21 +38,73 @@
             background-color: #1f2937;
         }
         
-        .dark-mode .status-ongoing {
-            background-color: rgba(254, 243, 199, 0.2);
-            color: #FEF3C7;
+        .dark-mode .card {
+            background-color: #374151;
         }
         
-        .dark-mode .status-done {
-            background-color: rgba(209, 250, 229, 0.2);
-            color: #D1FAE5;
+        .dark-mode .card-header {
+            background-color: #1f2937;
         }
-
-        /* Resto de estilos del modo oscuro mantenidos */
+        
+        .dark-mode .table-header {
+            background-color: #4b5563;
+            color: #e5e7eb;
+        }
+        
+        .dark-mode .table-cell {
+            background-color: #374151;
+            border-color: #4b5563;
+        }
+        
+        .dark-mode .time-column {
+            background-color: #4b5563;
+        }
+        
+        .dark-mode .time-header {
+            background-color: #1f2937;
+        }
+        
+        .dark-mode input, 
+        .dark-mode select, 
+        .dark-mode button {
+            background-color: #4b5563;
+            border-color: #6b7280;
+            color: #e5e7eb;
+        }
+        
+        .dark-mode .btn-outline {
+            border-color: #6b7280;
+        }
+        
+        .dark-mode .btn-outline:hover {
+            background-color: #6b7280;
+        }
+        
+        /* Estilos para prioridades en modo oscuro */
+        .dark-mode .prio-high {
+            background-color: rgba(220, 38, 38, 0.5);
+            color: #e5e7eb;
+        }
+        
+        .dark-mode .prio-medium {
+            background-color: rgba(217, 119, 6, 0.5);
+            color: #e5e7eb;
+        }
+        
+        .dark-mode .prio-low {
+            background-color: rgba(5, 150, 105, 0.5);
+            color: #e5e7eb;
+        }
+        
+        /* Alturas máximas para scrollable */
+        .scrollable-table {
+            max-height: calc(100vh - 300px);
+            overflow-y: auto;
+        }
     </style>
 </head>
-<body class="bg-gray-100 p-4">
-    <div id="root" class="container mx-auto max-w-7xl bg-white p-6 rounded-lg shadow-lg"></div>
+<body class="p-4">
+    <div id="root" class="container mx-auto max-w-7xl rounded-lg shadow-lg"></div>
 
     <script type="text/babel">
         const { useState, useEffect } = React;
@@ -72,47 +113,82 @@
             const [activeTab, setActiveTab] = useState('weekly');
             const [currentWeekStart, setCurrentWeekStart] = useState(getMonday(new Date()));
             const [tasks, setTasks] = useState([]);
-            const [completedTasks, setCompletedTasks] = useState([]);
             const [darkMode, setDarkMode] = useState(false);
+            const timeSlots = generateTimeSlots();
             const weekDays = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
-            // Corregido: Genera time slots de 30 minutos
-            function generateTimeSlots() {
-                const slots = [];
-                for (let i = 0; i < 24; i++) {
-                    slots.push(`${String(i).padStart(2, '0')}:00`);
-                    slots.push(`${String(i).padStart(2, '0')}:30`);
-                }
-                return slots;
-            }
-
-            // Corregido: Obtiene el lunes correcto basado en 2025
+            // Obtiene el lunes de la semana actual
             function getMonday(d) {
                 const day = d.getDay();
-                const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+                const diff = d.getDate() - day + (day === 0 ? -6 : 1); // ajusta cuando el día es domingo
                 return new Date(d.setDate(diff));
             }
 
-            // Corregido: Manejo de fechas para 2025
+            // Formatea fecha en formato ISO
             function formatDate(date) {
                 return date.toISOString().split('T')[0];
             }
 
-            // Actualizado: Manejo de tareas completadas
-            const completeTask = (taskId) => {
-                const task = tasks.find(t => t.id === taskId);
-                if (task) {
-                    const completedTask = {
-                        ...task,
-                        completedDate: new Date().toISOString(),
-                        status: 'Done'
-                    };
-                    setCompletedTasks([completedTask, ...completedTasks]);
-                    setTasks(tasks.filter(t => t.id !== taskId));
+            // Genera las fechas de la semana actual
+            function getWeekDates() {
+                const week = [];
+                const startDate = new Date(currentWeekStart);
+                
+                for (let i = 0; i < 7; i++) {
+                    const day = new Date(startDate);
+                    day.setDate(startDate.getDate() + i);
+                    week.push(formatDate(day));
                 }
-            };
+                
+                return week;
+            }
 
-            // Actualizado: Añadir nueva tarea
+            // Genera todos los horarios (24 horas)
+            function generateTimeSlots() {
+                const slots = [];
+                for (let i = 0; i < 24; i++) {
+                    slots.push(`${String(i).padStart(2, '0')}:00`);
+                }
+                return slots;
+            }
+
+            // Navega a la semana anterior
+            function goToPreviousWeek() {
+                const newDate = new Date(currentWeekStart);
+                newDate.setDate(currentWeekStart.getDate() - 7);
+                setCurrentWeekStart(newDate);
+            }
+
+            // Navega a la semana siguiente
+            function goToNextWeek() {
+                const newDate = new Date(currentWeekStart);
+                newDate.setDate(currentWeekStart.getDate() + 7);
+                setCurrentWeekStart(newDate);
+            }
+
+            // Navega a la semana actual
+            function goToToday() {
+                setCurrentWeekStart(getMonday(new Date()));
+            }
+
+            // Maneja cambios en el selector de fechas
+            function handleDateChange(e) {
+                const selectedDate = new Date(e.target.value);
+                setCurrentWeekStart(getMonday(selectedDate));
+            }
+
+            // Formatea fecha para mostrar en interfaz
+            function formatDisplayDate(dateStr) {
+                const date = new Date(dateStr);
+                return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
+            }
+
+            // Cambia entre modo claro y oscuro
+            function toggleDarkMode() {
+                setDarkMode(!darkMode);
+            }
+
+            // Agrega una nueva tarea
             const addTask = (day, timeSlot) => {
                 const weekDates = getWeekDates();
                 const dayIndex = weekDays.indexOf(day);
@@ -124,125 +200,339 @@
                     timeSlot,
                     date: taskDate,
                     title: '',
-                    priority: 'urgent_important', // Nuevo sistema de prioridades
-                    status: 'On-Going',
+                    priority: 'medium',
                     completed: false
                 };
                 setTasks([...tasks, newTask]);
-                saveToLocalStorage([...tasks, newTask], completedTasks);
+                // Guarda en localStorage
+                saveToLocalStorage([...tasks, newTask]);
             };
 
-            // Actualizado: Sistema de prioridades
-            const priorityOptions = [
-                { value: 'urgent_important', label: 'Urgente + Importante' },
-                { value: 'important_not_urgent', label: 'Importante + No Urgente' },
-                { value: 'urgent_not_important', label: 'Urgente + No Importante' },
-                { value: 'not_urgent_not_important', label: 'No Urgente + No Importante' }
-            ];
+            // Actualiza una tarea existente
+            const updateTask = (id, updates) => {
+                const updatedTasks = tasks.map(task => 
+                    task.id === id ? { ...task, ...updates } : task
+                );
+                setTasks(updatedTasks);
+                // Guarda en localStorage
+                saveToLocalStorage(updatedTasks);
+            };
 
-            // Resto del código (componentes UI, manejo de estado, etc.)
-            // ... (Continúa en la siguiente parte)
-// Continuación del componente TimeBoxingApp
+            // Elimina una tarea
+            const deleteTask = (id) => {
+                const filteredTasks = tasks.filter(task => task.id !== id);
+                setTasks(filteredTasks);
+                // Guarda en localStorage
+                saveToLocalStorage(filteredTasks);
+            };
 
-            // Manejo de LocalStorage actualizado
-            const saveToLocalStorage = (currentTasks, finishedTasks) => {
-                localStorage.setItem('timeBoxingTasks', JSON.stringify(currentTasks));
-                localStorage.setItem('timeBoxingCompletedTasks', JSON.stringify(finishedTasks));
+            // Guarda tareas en localStorage
+            const saveToLocalStorage = (tasksToSave) => {
+                localStorage.setItem('timeBoxingTasks', JSON.stringify(tasksToSave));
                 localStorage.setItem('timeBoxingDarkMode', JSON.stringify(darkMode));
             };
 
+            // Carga tareas desde localStorage
             const loadFromLocalStorage = () => {
                 const savedTasks = localStorage.getItem('timeBoxingTasks');
-                const savedCompletedTasks = localStorage.getItem('timeBoxingCompletedTasks');
+                if (savedTasks) {
+                    setTasks(JSON.parse(savedTasks));
+                }
+                
                 const savedDarkMode = localStorage.getItem('timeBoxingDarkMode');
-
-                if (savedTasks) setTasks(JSON.parse(savedTasks));
-                if (savedCompletedTasks) setCompletedTasks(JSON.parse(savedCompletedTasks));
-                if (savedDarkMode !== null) setDarkMode(JSON.parse(savedDarkMode));
+                if (savedDarkMode !== null) {
+                    setDarkMode(JSON.parse(savedDarkMode));
+                }
             };
 
-            // Componente de Registros (nueva pestaña)
-            const RegistersTab = () => (
-                <div className={`rounded-lg p-4 shadow card`}>
-                    <h2 className="text-xl font-semibold mb-4">Historial de Tareas Completadas</h2>
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-6 gap-4 font-medium border-b pb-2">
-                            <div>Tarea</div>
-                            <div>Día</div>
-                            <div>Hora</div>
-                            <div>Prioridad</div>
-                            <div>Estado</div>
-                            <div>Fecha Completado</div>
-                        </div>
-                        <div className="max-h-96 overflow-y-auto">
-                            {completedTasks.map(task => (
-                                <div key={task.id} className="grid grid-cols-6 gap-4 items-center border-b pb-2">
-                                    <div>{task.title || 'Sin título'}</div>
-                                    <div>{task.day}</div>
-                                    <div>{task.timeSlot}</div>
-                                    <div>{priorityOptions.find(p => p.value === task.priority)?.label}</div>
-                                    <div className="status-done px-2 py-1 rounded text-center">
-                                        {task.status}
-                                    </div>
-                                    <div>
-                                        {new Date(task.completedDate).toLocaleDateString()}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            );
+            // Guarda preferencia de modo oscuro
+            useEffect(() => {
+                localStorage.setItem('timeBoxingDarkMode', JSON.stringify(darkMode));
+            }, [darkMode]);
 
-            // Componente de pestañas actualizado
-            const TabsComponent = () => (
-                <div className="flex border-b mb-4">
-                    <button 
-                        className={`py-2 px-4 ${activeTab === 'weekly' ? 'border-b-2 border-blue-500 font-medium' : ''}`}
-                        onClick={() => setActiveTab('weekly')}
-                    >
-                        Planificación Semanal
-                    </button>
-                    <button 
-                        className={`py-2 px-4 ${activeTab === 'tasks' ? 'border-b-2 border-blue-500 font-medium' : ''}`}
-                        onClick={() => setActiveTab('tasks')}
-                    >
-                        Registro de Tareas
-                    </button>
-                    <button 
-                        className={`py-2 px-4 ${activeTab === 'priorities' ? 'border-b-2 border-blue-500 font-medium' : ''}`}
-                        onClick={() => setActiveTab('priorities')}
-                    >
-                        Matriz de Prioridades
-                    </button>
-                    <button 
-                        className={`py-2 px-4 ${activeTab === 'registers' ? 'border-b-2 border-blue-500 font-medium' : ''}`}
-                        onClick={() => setActiveTab('registers')}
-                    >
-                        Registros
-                    </button>
-                </div>
-            );
+            // Carga tareas al montar el componente
+            useEffect(() => {
+                loadFromLocalStorage();
+            }, []);
 
-            // Renderizado principal del componente
+            // Determina el color según la prioridad
+            const getPriorityColor = (priority) => {
+                if (darkMode) {
+                    switch(priority) {
+                        case 'high': return 'prio-high';
+                        case 'medium': return 'prio-medium';
+                        case 'low': return 'prio-low';
+                        default: return 'bg-gray-600';
+                    }
+                } else {
+                    switch(priority) {
+                        case 'high': return 'bg-red-100';
+                        case 'medium': return 'bg-yellow-100';
+                        case 'low': return 'bg-green-100';
+                        default: return 'bg-gray-100';
+                    }
+                }
+            };
+
+            // Obtiene las fechas de la semana actual
+            const weekDates = getWeekDates();
+
             return (
                 <div className={`w-full ${darkMode ? 'dark-mode' : 'bg-gray-100'}`}>
                     <div className={`p-6 rounded-lg shadow-lg app-container ${darkMode ? '' : 'bg-white'}`}>
                         <div className="flex justify-between items-center mb-6">
                             <h1 className="text-2xl font-bold">Time Boxing - Planificación y Gestión del Tiempo</h1>
                             <button 
-                                onClick={() => setDarkMode(!darkMode)}
+                                onClick={toggleDarkMode}
                                 className={`p-2 rounded-full ${darkMode ? 'bg-yellow-500 text-gray-900' : 'bg-gray-800 text-white'}`}
                             >
                                 {darkMode ? '☀️' : '🌙'}
                             </button>
                         </div>
                         
-                        <TabsComponent />
+                        {/* Pestañas */}
+                        <div className="flex border-b mb-4">
+                            <button 
+                                className={`py-2 px-4 ${activeTab === 'weekly' ? 'border-b-2 border-blue-500 font-medium' : ''}`}
+                                onClick={() => setActiveTab('weekly')}
+                            >
+                                Planificación Semanal
+                            </button>
+                            <button 
+                                className={`py-2 px-4 ${activeTab === 'tasks' ? 'border-b-2 border-blue-500 font-medium' : ''}`}
+                                onClick={() => setActiveTab('tasks')}
+                            >
+                                Registro de Tareas
+                            </button>
+                            <button 
+                                className={`py-2 px-4 ${activeTab === 'priorities' ? 'border-b-2 border-blue-500 font-medium' : ''}`}
+                                onClick={() => setActiveTab('priorities')}
+                            >
+                                Matriz de Prioridades
+                            </button>
+                        </div>
 
-                        {/* Contenido de las pestañas */}
-                        {activeTab === 'registers' && <RegistersTab />}
-                        {/* ... (resto de las pestañas se mantienen igual con las actualizaciones de estados) */}
+                        {/* Pestaña de Planificación Semanal */}
+                        {activeTab === 'weekly' && (
+                            <div className={`rounded-lg p-4 shadow card`}>
+                                <h2 className="text-xl font-semibold mb-4">Time Boxing Semanal</h2>
+                                
+                                {/* Navegación de fechas */}
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center space-x-2">
+                                        <button 
+                                            className="p-2 border rounded btn-outline"
+                                            onClick={goToPreviousWeek}
+                                        >
+                                            ←
+                                        </button>
+                                        <button 
+                                            className="px-3 py-2 border rounded btn-outline"
+                                            onClick={goToToday}
+                                        >
+                                            Hoy
+                                        </button>
+                                        <button 
+                                            className="p-2 border rounded btn-outline"
+                                            onClick={goToNextWeek}
+                                        >
+                                            →
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="text-center font-medium">
+                                        Semana del {formatDisplayDate(weekDates[0])} al {formatDisplayDate(weekDates[6])}
+                                    </div>
+                                    
+                                    <div>
+                                        <input 
+                                            type="date" 
+                                            value={weekDates[0]}
+                                            onChange={handleDateChange}
+                                            className="p-2 border rounded"
+                                        />
+                                    </div>
+                                </div>
+                                
+                                <div className="scrollable-table">
+                                    <table className="w-full border-collapse">
+                                        <thead>
+                                            <tr>
+                                                <th className={`p-2 border time-header ${darkMode ? 'table-header' : 'bg-gray-100'}`}>Hora</th>
+                                                {weekDays.map((day, i) => (
+                                                    <th key={day} className={`p-2 border sticky-header ${darkMode ? 'table-header' : 'bg-gray-100'}`}>
+                                                        {day}
+                                                        <div className="text-xs text-gray-500">{formatDisplayDate(weekDates[i])}</div>
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {timeSlots.map(timeSlot => (
+                                                <tr key={timeSlot}>
+                                                    <td className={`p-2 border font-medium time-column ${darkMode ? 'table-header' : 'bg-gray-100'}`}>{timeSlot}</td>
+                                                    {weekDays.map((day, i) => {
+                                                        const cellTasks = tasks.filter(
+                                                            task => task.day === day && task.timeSlot === timeSlot && 
+                                                                task.date === weekDates[i]
+                                                        );
+                                                        
+                                                        return (
+                                                            <td key={`${day}-${timeSlot}-${weekDates[i]}`} className={`p-2 border relative min-h-16 ${darkMode ? 'table-cell' : ''}`}>
+                                                                {cellTasks.map(task => (
+                                                                    <div 
+                                                                        key={task.id} 
+                                                                        className={`mb-1 p-1 rounded ${getPriorityColor(task.priority)}`}
+                                                                    >
+                                                                        <input
+                                                                            value={task.title}
+                                                                            onChange={(e) => updateTask(task.id, { title: e.target.value })}
+                                                                            className="mb-1 w-full p-1 border rounded"
+                                                                            placeholder="Título de la tarea"
+                                                                        />
+                                                                        <div className="flex gap-1">
+                                                                            <select
+                                                                                value={task.priority}
+                                                                                onChange={(e) => updateTask(task.id, { priority: e.target.value })}
+                                                                                className="text-xs p-1 rounded border"
+                                                                            >
+                                                                                <option value="high">Alta</option>
+                                                                                <option value="medium">Media</option>
+                                                                                <option value="low">Baja</option>
+                                                                            </select>
+                                                                            <button 
+                                                                                className="bg-red-500 text-white p-1 rounded"
+                                                                                onClick={() => deleteTask(task.id)}
+                                                                            >
+                                                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                                <button 
+                                                                    className="mt-1 p-1 border rounded btn-outline"
+                                                                    onClick={() => addTask(day, timeSlot)}
+                                                                >
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+                                                                </button>
+                                                            </td>
+                                                        );
+                                                    })}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Pestaña de Registro de Tareas */}
+                        {activeTab === 'tasks' && (
+                            <div className={`rounded-lg p-4 shadow card`}>
+                                <h2 className="text-xl font-semibold mb-4">Registro de Tareas</h2>
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-5 gap-4 font-medium border-b pb-2">
+                                        <div>Tarea</div>
+                                        <div>Día</div>
+                                        <div>Hora</div>
+                                        <div>Prioridad</div>
+                                        <div>Estado</div>
+                                    </div>
+                                    <div className="max-h-96 overflow-y-auto">
+                                        {tasks.length > 0 ? (
+                                            tasks.map(task => (
+                                                <div key={task.id} className="grid grid-cols-5 gap-4 items-center border-b pb-2">
+                                                    <div>{task.title || 'Sin título'}</div>
+                                                    <div>{task.day} ({task.date ? formatDisplayDate(task.date) : 'N/A'})</div>
+                                                    <div>{task.timeSlot}</div>
+                                                    <div className={`px-2 py-1 rounded text-center ${getPriorityColor(task.priority)}`}>
+                                                        {task.priority === 'high' ? 'Alta' : 
+                                                        task.priority === 'medium' ? 'Media' : 'Baja'}
+                                                    </div>
+                                                    <div>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={task.completed}
+                                                            onChange={(e) => updateTask(task.id, { completed: e.target.checked })}
+                                                            className="h-5 w-5"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="text-center py-4 text-gray-500">
+                                                No hay tareas registradas. Comienza agregando una tarea en la pestaña de Planificación Semanal.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Pestaña de Matriz de Prioridades */}
+                        {activeTab === 'priorities' && (
+                            <div className={`rounded-lg p-4 shadow card`}>
+                                <h2 className="text-xl font-semibold mb-4">Matriz de Prioridades</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className={`border rounded-lg p-4 card`}>
+                                        <h3 className="font-semibold mb-2">Urgente + Importante</h3>
+                                        <div className={`p-2 rounded min-h-32 ${darkMode ? 'bg-red-900/20' : 'bg-red-50'}`}>
+                                            {tasks.filter(t => t.priority === 'high').map(task => (
+                                                <div key={task.id} className={`mb-2 p-2 rounded ${getPriorityColor('high')}`}>
+                                                    <div className="font-medium">{task.title || 'Sin título'}</div>
+                                                    <div className="text-xs text-gray-500">{task.day} {task.date ? `(${formatDisplayDate(task.date)})` : ''} - {task.timeSlot}</div>
+                                                </div>
+                                            ))}
+                                            {tasks.filter(t => t.priority === 'high').length === 0 && (
+                                                <div className="text-gray-500 text-center py-2">No hay tareas en esta categoría</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className={`border rounded-lg p-4 card`}>
+                                        <h3 className="font-semibold mb-2">Importante + No Urgente</h3>
+                                        <div className={`p-2 rounded min-h-32 ${darkMode ? 'bg-yellow-900/20' : 'bg-yellow-50'}`}>
+                                            {tasks.filter(t => t.priority === 'medium').map(task => (
+                                                <div key={task.id} className={`mb-2 p-2 rounded ${getPriorityColor('medium')}`}>
+                                                    <div className="font-medium">{task.title || 'Sin título'}</div>
+                                                    <div className="text-xs text-gray-500">{task.day} {task.date ? `(${formatDisplayDate(task.date)})` : ''} - {task.timeSlot}</div>
+                                                </div>
+                                            ))}
+                                            {tasks.filter(t => t.priority === 'medium').length === 0 && (
+                                                <div className="text-gray-500 text-center py-2">No hay tareas en esta categoría</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className={`border rounded-lg p-4 card`}>
+                                        <h3 className="font-semibold mb-2">Urgente + No Importante</h3>
+                                        <div className={`p-2 rounded min-h-32 ${darkMode ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
+                                            {tasks.filter(t => t.priority === 'low').map(task => (
+                                                <div key={task.id} className={`mb-2 p-2 rounded ${getPriorityColor('low')}`}>
+                                                    <div className="font-medium">{task.title || 'Sin título'}</div>
+                                                    <div className="text-xs text-gray-500">{task.day} {task.date ? `(${formatDisplayDate(task.date)})` : ''} - {task.timeSlot}</div>
+                                                </div>
+                                            ))}
+                                            {tasks.filter(t => t.priority === 'low').length === 0 && (
+                                                <div className="text-gray-500 text-center py-2">No hay tareas en esta categoría</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className={`border rounded-lg p-4 card`}>
+                                        <h3 className="font-semibold mb-2">No Urgente + No Importante</h3>
+                                        <div className={`p-2 rounded min-h-32 ${darkMode ? 'bg-gray-900/20' : 'bg-gray-50'}`}>
+                                            {tasks.filter(t => !['high', 'medium', 'low'].includes(t.priority)).map(task => (
+                                                <div key={task.id} className={`mb-2 p-2 rounded ${darkMode ? 'bg-gray-600' : 'bg-gray-100'}`}>
+                                                    <div className="font-medium">{task.title || 'Sin título'}</div>
+                                                    <div className="text-xs text-gray-500">{task.day} {task.date ? `(${formatDisplayDate(task.date)})` : ''} - {task.timeSlot}</div>
+                                                </div>
+                                            ))}
+                                            {tasks.filter(t => !['high', 'medium', 'low'].includes(t.priority)).length === 0 && (
+                                                <div className="text-gray-500 text-center py-2">No hay tareas en esta categoría</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             );
